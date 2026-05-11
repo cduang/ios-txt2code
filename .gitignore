@@ -1,0 +1,16 @@
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+Build/
+
+# macOS
+.DS_Store
+
+# SwiftPM
+.build/
+Package.resolved
+
+# XcodeGen cache
+.xcodegen-cache/
