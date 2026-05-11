@@ -1,0 +1,147 @@
+# =============================================================================
+# QRCodeApp - GitHub Actions CI/CD
+# =============================================================================
+# 工作流说明：
+# - 推送 tag（如 v1.0.0）时自动触发构建
+# - 编译生成 Release 版 .app
+# - 打包为 .ipa（SideStore / AltStore 可用）
+# - 转换为 .tipa（TrollStore 可用）
+# - 发布到 GitHub Releases
+#
+# 前置条件：
+# 1. 在 Xcode 中创建项目后，将本仓库根目录作为项目根目录
+# 2. Xcode 项目名称为 `QRCodeApp`，scheme 名称为 `QRCodeApp`
+# 3. xcodeproj 位于仓库根目录
+# =============================================================================
+name: Build & Release .tipa
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+env:
+  PROJECT_NAME: QRCodeApp
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+
+jobs:
+  build:
+    name: Build & Package .tipa
+    runs-on: macos-15
+    # macOS 15 (Sequoia) 预装 Xcode 16+，默认支持 Swift 6
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Show Build Environment
+        run: |
+          swift --version
+          xcodebuild -version
+          xcodebuild -showsdks
+
+      - name: Find Xcode Project
+        id: find_project
+        run: |
+          # 自动查找 .xcodeproj 或 .xcworkspace
+          XCODEPROJ=$(find . -name "*.xcodeproj" -maxdepth 2 | head -1)
+          XCWORKSPACE=$(find . -name "*.xcworkspace" -maxdepth 2 | grep -v "xcuserdata" | head -1)
+
+          if [ -n "$XCWORKSPACE" ]; then
+            echo "project_flag=-workspace" >> $GITHUB_OUTPUT
+            echo "project_path=$XCWORKSPACE" >> $GITHUB_OUTPUT
+            echo "Using workspace: $XCWORKSPACE"
+          elif [ -n "$XCODEPROJ" ]; then
+            echo "project_flag=-project" >> $GITHUB_OUTPUT
+            echo "project_path=$XCODEPROJ" >> $GITHUB_OUTPUT
+            echo "Using project: $XCODEPROJ"
+          else
+            echo "Error: No .xcodeproj or .xcworkspace found!"
+            exit 1
+          fi
+
+          # 从项目文件推断 scheme 名称（取项目文件名去掉扩展名）
+          SCHEME=$(basename "${XCODEPROJ}" .xcodeproj)
+          echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
+          echo "Inferred scheme: $SCHEME"
+
+      - name: Build for iOS (Release)
+        run: |
+          xcodebuild build \
+            ${{ steps.find_project.outputs.project_flag }} "${{ steps.find_project.outputs.project_path }}" \
+            -scheme "${{ steps.find_project.outputs.scheme }}" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            PRODUCT_BUNDLE_IDENTIFIER="com.qrcodetool.app" \
+            SWIFT_OPTIMIZATION_LEVEL="-O" \
+            CLANG_ENABLE_MODULES=YES \
+            SWIFT_COMPILATION_MODE=wholemodule \
+            -derivedDataPath ./Build \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            | xcbeautify
+
+      - name: Locate .app Bundle
+        id: find_app
+        run: |
+          APP_PATH=$(find ./Build -name "*.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: .app bundle not found!"
+            exit 1
+          fi
+          echo "APP_PATH=$APP_PATH" >> $GITHUB_OUTPUT
+          echo "Found .app at: $APP_PATH"
+
+      - name: Create Payload & .ipa
+        run: |
+          mkdir -p Payload
+          cp -R "${{ steps.find_app.outputs.APP_PATH }}" Payload/
+          zip -qr "${{ env.PROJECT_NAME }}.ipa" Payload/
+          echo "IPA created: $(ls -lh ${{ env.PROJECT_NAME }}.ipa)"
+
+      - name: Convert .ipa to .tipa (TrollStore)
+        run: |
+          cp "${{ env.PROJECT_NAME }}.ipa" "${{ env.PROJECT_NAME }}.tipa"
+          echo "TIPA created: $(ls -lh ${{ env.PROJECT_NAME }}.tipa)"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "QR码工具 v${{ github.ref_name }}"
+          body: |
+            ## QR码工具 v${{ github.ref_name }}
+
+            ### ✅ 隐私承诺
+            - 完全离线运行，零网络访问
+            - 所有数据仅在本地处理
+            - 无追踪、无分析、无数据收集
+
+            ### 📦 安装方式
+            1. 下载 `.tipa` 文件 → 使用 TrollStore 安装
+            2. 或下载 `.ipa` → 使用 SideStore / AltStore 安装
+
+            ### 🛠 功能
+            - 文本 → 二维码（支持保存到相册）
+            - 相机实时扫码
+            - 相册图片二维码识别
+            - 一键复制识别结果
+
+            ### ⚠️ 注意
+            - 需要 iOS 16.0+
+            - 需要 A12 Bionic 或更新芯片（DataScanner 要求）
+          draft: false
+          prerelease: false
+          files: |
+            ${{ env.PROJECT_NAME }}.ipa
+            ${{ env.PROJECT_NAME }}.tipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
