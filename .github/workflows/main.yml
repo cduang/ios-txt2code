@@ -49,7 +49,9 @@ jobs:
 
       - name: Generate Xcode Project
         run: xcodegen generate --spec project.yml --use-cache
-        # 从 project.yml 生成 QRCodeApp.xcodeproj
+
+      - name: Generate App Icons
+        run: swift Scripts/generate_app_icon.swift
 
       - name: Build iOS App (Release)
         run: |
