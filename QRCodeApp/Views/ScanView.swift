@@ -1,6 +1,6 @@
 import SwiftUI
 import PhotosUI
-import UIKit
+import VisionKit
 
 /// 「扫描」标签页 - 扫码 & 图片识别
 struct ScanView: View {
