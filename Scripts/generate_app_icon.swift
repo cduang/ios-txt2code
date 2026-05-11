@@ -173,7 +173,7 @@ func drawAppIcon(pixelSize: Int) -> CGImage? {
     ctx.setLineWidth(lineW)
     ctx.setLineCap(.round)
 
-    let pts: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [
+    let pts: [(CGFloat, CGFloat, CGFloat, CGFloat, CGFloat, CGFloat)] = [
         (sx, sy + cornerLen, sx, sy, sx + cornerLen, sy),                    // 左上
         (sx + scanBoxSize - cornerLen, sy, sx + scanBoxSize, sy, sx + scanBoxSize, sy + cornerLen), // 右上
         (sx, sy + scanBoxSize - cornerLen, sx, sy + scanBoxSize, sx + cornerLen, sy + scanBoxSize), // 左下
