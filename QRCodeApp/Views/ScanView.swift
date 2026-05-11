@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import UIKit
 
 /// 「扫描」标签页 - 扫码 & 图片识别
 struct ScanView: View {
@@ -33,8 +34,8 @@ struct ScanView: View {
                     viewModel.handleScanResult(text)
                 }
             }
-            // 处理相册选取
-            .onChange(of: selectedPhotoItem) { _, newItem in
+            // 处理相册选取（iOS 16 兼容）
+            .onChange(of: selectedPhotoItem) { newItem in
                 handlePhotoPickerItem(newItem)
             }
         }

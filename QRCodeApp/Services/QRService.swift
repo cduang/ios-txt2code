@@ -1,6 +1,6 @@
 import UIKit
 import CoreImage
-import Vision
+@preconcurrency import Vision
 import Photos
 
 /// 二维码核心服务 - 完全离线，无任何网络调用

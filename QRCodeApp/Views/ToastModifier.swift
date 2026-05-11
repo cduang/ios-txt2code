@@ -29,7 +29,7 @@ struct ToastModifier: ViewModifier {
                         }
                 }
             }
-            .onChange(of: message) { _, newValue in
+            .onChange(of: message) { newValue in
                 withAnimation(.spring(duration: 0.3)) {
                     show = newValue != nil
                 }
